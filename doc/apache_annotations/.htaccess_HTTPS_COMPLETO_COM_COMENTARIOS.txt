@@ -1,0 +1,491 @@
+# ============================================
+# CONFIGURAÇÃO HTTPS PROFISSIONAL - IPAC CONTABILIDADE
+# ============================================
+#
+# VERSÃO: 1.0
+# NÍVEL: Intermediário (Nível 2)
+# MÓDULOS ENVOLVIDOS: mod_rewrite, mod_deflate, mod_expires, mod_headers
+# OBJETIVO: Forçar HTTPS seguro, otimizar performance, aplicar headers de segurança
+#
+# ============================================
+# ESTRUTURA DO ARQUIVO
+# ============================================
+# 1. MÓDULOS E ATIVAÇÕES
+# 2. FORÇAR HTTPS (Segurança)
+# 3. FORÇAR WWW ou SEM WWW (Canonical)
+# 4. SEGURANÇA BÁSICA
+# 5. CACHE (Performance)
+# 6. COMPRESSÃO (Performance)
+# 7. HEADERS DE SEGURANÇA
+# 8. REESCRITA DE URLs (Exemplo Framework)
+#
+# ============================================
+# SEÇÃO 1: MÓDULOS E ATIVAÇÕES BÁSICAS
+# ============================================
+
+# MÓDULO: mod_rewrite
+# FUNÇÃO: Permite reescrever URLs internamente
+# ANATOMIA: "RewriteEngine" é a diretiva que ativa o módulo
+# POR QUE: Necessário para HTTPS, canonical, e URL rewriting
+# VERIFICAÇÃO: cPanel → Apache Modules → search "rewrite" → deve estar ativo
+RewriteEngine On
+
+# DIRETIVA: RewriteBase
+# FUNÇÃO: Define o caminho base para rewrites
+# ANATOMIA: "/" = raiz do domínio
+# NOTA: Se seu site está em subpasta (ex: /subdominio/), use "/subdominio/"
+# NESTE CASO: "/" = site está em public_html (raiz)
+RewriteBase /
+
+# ============================================
+# SEÇÃO 2: FORÇAR HTTPS (SEGURANÇA CRÍTICA)
+# ============================================
+#
+# OBJETIVO: Garantir que TODAS requisições HTTP sejam redirecionadas para HTTPS
+# MOTIVO: HTTPS criptografa dados em trânsito (senhas, dados pessoais)
+# TECNOLOGIA: TLS/SSL (certificado instalado no cPanel)
+#
+# FLUXO:
+# [Cliente digita http://ipac.com.br]
+#     ↓
+# [Apache intercepta]
+#     ↓
+# [Verifica: é HTTP?]
+#     ↓
+# [Se SIM → Redireciona para HTTPS com 301]
+#     ↓
+# [Cliente carrega versão segura]
+#
+
+# CONDIÇÃO 1: Verificar se conexão é HTTP (não HTTPS)
+# MÓDULO: mod_rewrite
+# VARIÁVEL: %{HTTPS}
+#   - Valor "off" = conexão HTTP (insegura)
+#   - Valor "on" = conexão HTTPS (segura)
+# ANATOMIA: RewriteCond = condicional (IF)
+# LÓGICA: "Se a variável HTTPS for igual a 'off'..."
+RewriteCond %{HTTPS} off
+
+# REGRA 1: Reescrever para HTTPS
+# MÓDULO: mod_rewrite
+# DIRETIVA: RewriteRule
+# ANATOMIA:
+#   ^(.*)$                    = Pega TUDO na URL (regex)
+#   https://...               = Destino (protocolo HTTPS)
+#   %{HTTP_HOST}             = Mantém o host original (ex: ipac.com.br)
+#   %{REQUEST_URI}           = Mantém caminho original (ex: /usuarios/123)
+#   [L,R=301]                = Flags (Last=parar, R=301=redir. permanente)
+#
+# EXEMPLO PRÁTICO:
+#   Cliente: http://ipac.com.br/usuarios/123
+#   Apache reescreve: https://ipac.com.br/usuarios/123
+#   Status HTTP: 301 (permanente = buscadores seguem)
+#
+# POR QUE 301: SEO (Google entende que é migração permanente)
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# ============================================
+# SEÇÃO 3: FORÇAR CANONICALIZAÇÃO (DOMÍNIO SEM WWW)
+# ============================================
+#
+# OBJETIVO: Evitar conteúdo duplicado (ipac.com.br vs www.ipac.com.br)
+# PROBLEMA SEM ISSO: Google vê como 2 sites diferentes = ruim para SEO
+# SOLUÇÃO: Escolher 1 (com www ou sem) e redirecionar tudo para 1
+# ESCOLHA NESTE EXEMPLO: SEM WWW (mais moderno)
+#
+# FLUXO:
+# [Cliente digita https://www.ipac.com.br]
+#     ↓
+# [Apache verifica: tem www?]
+#     ↓
+# [Se SIM → Redireciona para https://ipac.com.br (sem www)]
+#     ↓
+# [Status 301 = Google entende e consolida SEO]
+#
+
+# CONDIÇÃO 2: Verificar se URL tem www
+# VARIÁVEL: %{HTTP_HOST}
+#   - Valor se digitou www: www.ipac.com.br
+#   - Valor se digitou sem: ipac.com.br
+# ANATOMIA: ^www\. = começa com "www."
+# ESCAPE: \. = escapa o ponto (.) é caractere especial em regex
+# [NC] = NoCase (ignora maiúscula/minúscula www vs WWW)
+RewriteCond %{HTTP_HOST} ^www\. [NC]
+
+# REGRA 2: Remover www
+# DIRETIVA: RewriteRule
+# ANATOMIA:
+#   ^(.*)$                    = Captura TUDO
+#   https://%{HTTP_HOST}      = Pega host com www (ex: www.ipac.com.br)
+#   Substitui por:
+#   https://%1/$1             = Remove www (usa captura sem www)
+#
+# PROBLEMA: %{HTTP_HOST} ainda tem www. Solução: usar captura da RewriteCond
+# CORREÇÃO CORRETA:
+#
+# Melhor abordagem (extrair host sem www):
+RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
+RewriteRule ^(.*)$ https://%1/$1 [L,R=301]
+
+# Explicação da linha acima:
+#   ^www\.(.+)$              = Captura tudo APÓS www. em grupo 1 (%1)
+#   %1                       = Primeira captura = domínio sem www
+#   $1                       = Segunda captura = URL original
+#   Resultado: https://ipac.com.br/usuarios/123
+
+# ============================================
+# SEÇÃO 4: SEGURANÇA BÁSICA
+# ============================================
+#
+# OBJETIVO: Bloquear acessos indevidos
+# MÓDULOS ENVOLVIDOS: mod_auth, mod_access_compat
+#
+
+# SUBSEÇÃO 4.1: Desabilitar listagem de diretórios
+# MÓDULO: mod_dir (core Apache)
+# DIRETIVA: Options
+# ANATOMIA: -Indexes = remover permissão de listagem (-X = negação)
+# EFEITO: Acesso a /uploads/ retorna 403 (ao invés de listar arquivos)
+# POR QUE: Privacidade (ninguém vê quais arquivos existem)
+Options -Indexes
+
+# SUBSEÇÃO 4.2: Bloquear acesso a arquivos sensíveis
+# MÓDULO: mod_access_compat
+# DIRETIVA: <Files>
+# ANATOMIA: <Files "config.php"> = regra específica para arquivo
+# EFEITO: Qualquer tentativa de acessar config.php retorna 403
+#
+# EXEMPLO PRÁTICO: config.php contém credenciais do banco de dados
+# Sem isto: alguém acessa http://ipac.com.br/config.php = vê senhas!
+# Com isto: Acesso bloqueado ✅
+<Files "config.php">
+    Deny from all
+</Files>
+
+# Bloquear arquivo .env (variáveis de ambiente)
+# TECNOLOGIA: Framework (Laravel, Slim) use .env para credenciais
+# PADRÃO: <FilesMatch> com regex
+# ANATOMIA: \.env$ = arquivo que termina com .env
+<FilesMatch "\.env$">
+    Deny from all
+</FilesMatch>
+
+# Bloquear arquivo .htaccess (prevent edit via web)
+# MOTIVO: Alguém poderia tentar modificar regras Apache
+<FilesMatch "^\.ht">
+    Deny from all
+</FilesMatch>
+
+# ============================================
+# SEÇÃO 5: CACHE (PERFORMANCE)
+# ============================================
+#
+# OBJETIVO: Fazer cliente guardar arquivos localmente = carrega mais rápido
+# TECNOLOGIA: Cache HTTP (Header "Cache-Control" ou "Expires")
+# COMO FUNCIONA:
+#   [1ª visita] Cliente baixa logo.png (100KB)
+#   [2ª visita] Cliente: "Tenho em cache, não preciso baixar"
+#   [Resultado] Carregamento INSTANTÂNEO
+#
+# MÓDULO: mod_expires
+# VERIFICAÇÃO: cPanel → Apache Modules → search "expires" → deve estar ativo
+#
+
+# ATIVA sistema de cache/expiração
+# DIRETIVA: ExpiresActive
+# VALOR: On = ativa, Off = desativa
+# NOTA: Sem isto, nada funciona
+<IfModule mod_expires.c>
+    ExpiresActive On
+    
+    # ============================================
+    # CACHE POR TIPO DE ARQUIVO
+    # ============================================
+    
+    # IMAGENS: Cache por 1 ANO
+    # MOTIVO: Imagens mudam raramente (logo, ícones)
+    # ANATOMIA: "access plus 1 year"
+    #   - "access" = começar a contar do último acesso
+    #   - "plus 1 year" = 365 dias após
+    # RESULTADO: Browser não baixa novamente por 1 ano
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/webp "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+    
+    # FONTES WEB: Cache por 1 ANO
+    # MOTIVO: Fontes (.woff, .ttf) são pesadas e raramente mudam
+    ExpiresByType font/truetype "access plus 1 year"
+    ExpiresByType font/opentype "access plus 1 year"
+    ExpiresByType application/x-font-woff "access plus 1 year"
+    ExpiresByType application/vnd.ms-fontobject "access plus 1 year"
+    
+    # CSS: Cache por 1 MÊS
+    # MOTIVO: Pode sofrer updates (mudanças visuais)
+    # TEMPO: 30 dias é bom balanço (rápido + atualizado)
+    ExpiresByType text/css "access plus 1 month"
+    
+    # JAVASCRIPT: Cache por 1 MÊS
+    # MOTIVO: Pode ter bug fixes, mas não muda frequente
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType text/javascript "access plus 1 month"
+    
+    # HTML: Cache por 1 DIA
+    # MOTIVO: HTML muda FREQUENTE (conteúdo, links)
+    # TEMPO: 1 dia = boa frequência de update
+    # NOTA: Não use muito tempo (usuário vê conteúdo desatualizado)
+    ExpiresByType text/html "access plus 1 day"
+    
+    # JSON/API: Cache por 1 HORA
+    # MOTIVO: API retorna dados dinâmicos (podem mudar)
+    # TEMPO: 1 hora = equilíbrio entre cache e atualização
+    ExpiresByType application/json "access plus 1 hour"
+    
+    # PADRÃO para tudo mais: 8 HORAS
+    # MOTIVO: Arquivos não especificados = genéricos
+    ExpiresDefault "access plus 8 hours"
+    
+# Fecha bloco IfModule
+</IfModule>
+
+# ============================================
+# SEÇÃO 6: COMPRESSÃO GZIP (PERFORMANCE)
+# ============================================
+#
+# OBJETIVO: Comprimir arquivos antes de enviar (economiza banda)
+# TECNOLOGIA: GZIP (compressão sem perda)
+# ANATOMIA:
+#   Arquivo HTML: 100 KB
+#   Após gzip:    30 KB (70% menor!)
+#   Browser:      Descompacta automaticamente (transparente)
+#
+# VANTAGEM: Mais rápido (menos dados trafegando)
+# DESVANTAGEM: CPU gasta energia comprimindo (mínimo)
+# BALANÇO: Vale MUITO a pena
+#
+# MÓDULO: mod_deflate
+# VERIFICAÇÃO: cPanel → Apache Modules → search "deflate" → deve estar ativo
+#
+
+<IfModule mod_deflate.c>
+    # ATIVA compressão de saída
+    # ANATOMIA: AddOutputFilterByType DEFLATE {tipo_mime}
+    #   - DEFLATE = algoritmo gzip
+    #   - tipo_mime = tipo de arquivo
+    #
+    # IMPORTANTE: Comprime ANTES de enviar ao cliente
+    
+    # Comprime HTML (documentos web)
+    # MOTIVO: HTML é texto puro, comprime muito bem
+    AddOutputFilterByType DEFLATE text/html
+    
+    # Comprime texto simples
+    AddOutputFilterByType DEFLATE text/plain
+    
+    # Comprime XML
+    AddOutputFilterByType DEFLATE text/xml
+    AddOutputFilterByType DEFLATE application/xml
+    
+    # Comprime CSS (estilos web)
+    # MOTIVO: CSS é texto, comprime ~50%
+    AddOutputFilterByType DEFLATE text/css
+    
+    # Comprime JavaScript (código web)
+    # MOTIVO: JS é texto, comprime bem
+    AddOutputFilterByType DEFLATE text/javascript
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE application/x-javascript
+    
+    # Comprime JSON (dados estruturados)
+    # MOTIVO: APIs retornam JSON, comprime bem
+    AddOutputFilterByType DEFLATE application/json
+    
+    # Comprime SVG (gráficos vetoriais)
+    # MOTIVO: SVG é XML, comprime muito
+    AddOutputFilterByType DEFLATE image/svg+xml
+    
+    # NÃO comprimir tipos já comprimidos (desperdício)
+    # ANATOMIA: SetEnvIfNoCase = set variável se condição
+    #   - Request_URI = URL da requisição
+    #   - \.(?:...) = arquivo com estas extensões
+    #   - no-gzip = variável que impede gzip
+    SetEnvIfNoCase Request_URI \
+        \.(?:gif|jpe?g|png|rar|zip|7z|exe|gz|tar)$ \
+        no-gzip dont-vary
+    
+# Fecha bloco IfModule
+</IfModule>
+
+# ============================================
+# SEÇÃO 7: HEADERS DE SEGURANÇA
+# ============================================
+#
+# OBJETIVO: Enviar headers HTTP que aumentam segurança
+# TECNOLOGIA: HTTP Headers (linhas enviadas antes do conteúdo)
+# ANATOMIA: Header set {Nome} "{Valor}"
+#
+# MÓDULO: mod_headers
+# VERIFICAÇÃO: Geralmente ativo por padrão
+#
+
+<IfModule mod_headers.c>
+    
+    # HEADER 1: Cache-Control
+    # FUNÇÃO: Confirma ao navegador qual é a política de cache
+    # ANATOMIA:
+    #   - "public" = pode ser cacheado por qualquer um (proxy, navegador)
+    #   - "max-age=31536000" = válido por 31536000 segundos (1 ano)
+    # NOTA: Reforça que mod_expires foi ativado
+    Header set Cache-Control "public, max-age=31536000"
+    
+    # HEADER 2: Vary Accept-Encoding
+    # FUNÇÃO: Avisa ao proxy/cache que este arquivo pode ter versões diferentes
+    # RAZÃO: Gzip comprimido vs não comprimido = dois "arquivos" diferentes
+    # MOTIVO: Se cache guardar versão gzip, cliente sem gzip recebe errado
+    Header append Vary Accept-Encoding
+    
+    # HEADER 3: X-Content-Type-Options
+    # FUNÇÃO: Previne ataques "MIME sniffing"
+    # ATAQUEÉ: Browser tenta adivinhar tipo de arquivo (JS ao invés de HTML)
+    # SOLUÇÃO: "nosniff" = respeita Content-Type exato
+    # SEGURANÇA: Crítica (evita execução não intencional de scripts)
+    Header set X-Content-Type-Options "nosniff"
+    
+    # HEADER 4: X-Frame-Options
+    # FUNÇÃO: Previne "Clickjacking" (engano visual)
+    # ATAQUE: Página maliciosa cobre seu site com iframe invisível
+    # SOLUÇÃO: "SAMEORIGIN" = só pode ser usado em iframe do MESMO domínio
+    # EXEMPLO: ipac.com.br pode iframe a si mesma, mas site.malicioso.com NÃO
+    Header set X-Frame-Options "SAMEORIGIN"
+    
+    # HEADER 5: X-XSS-Protection
+    # FUNÇÃO: Proteção contra Cross-Site Scripting (XSS)
+    # ATAQUE: Injetar <script> malicioso em página
+    # SOLUÇÃO: Browser bloqueia e avisa
+    # VALOR: "1; mode=block" = ativa e bloqueia se detectar XSS
+    Header set X-XSS-Protection "1; mode=block"
+    
+    # HEADER 6: Referrer-Policy
+    # FUNÇÃO: Define se e como enviar informação de "de onde vim"
+    # ANATOMIA: "strict-origin-when-cross-origin"
+    #   - Envia referer para HTTPS (seguro)
+    #   - NÃO envia para HTTP (inseguro)
+    # PRIVACIDADE: Evita vazar informações de navegação
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    
+    # HEADER 7: Permissions-Policy (antes Feature-Policy)
+    # FUNÇÃO: Controla quais APIs o navegador pode usar
+    # EXEMPLO: Desabilita camera, microfone, localização
+    # SEGURANÇA: Evita scripts maliciosos acessarem hardware
+    Header set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    
+# Fecha bloco IfModule
+</IfModule>
+
+# ============================================
+# SEÇÃO 8: REESCRITA DE URLs (EXEMPLO FRAMEWORK)
+# ============================================
+#
+# OBJETIVO: Rotas bonitas para framework (ex: Laravel, Slim)
+# TECNOLOGIA: URL rewriting invisível
+# PADRÃO: Qualquer URL desconhecida → index.php
+# RESULTADO: Framework recebe e roteia
+#
+# EXEMPLO:
+#   [Cliente acessa] /usuarios/123
+#   [Arquivo real?] NÃO
+#   [Diretório real?] NÃO
+#   [Então reescreve para] index.php?rota=/usuarios/123
+#   [Framework processa] /usuarios/123 → UsuarioController::show(123)
+#
+
+# PRÉ-CONDIÇÃO 1: Se NÃO é arquivo real
+# VARIÁVEL: %{REQUEST_FILENAME}
+#   = Caminho completo do arquivo solicitado (ex: /usuarios.php)
+# OPERADOR: !-f (não é arquivo = arquivo não existe)
+# LÓGICA: "Se arquivo solicitado não existe..."
+RewriteCond %{REQUEST_FILENAME} !-f
+
+# PRÉ-CONDIÇÃO 2: Se NÃO é diretório real
+# OPERADOR: !-d (não é diretório = diretório não existe)
+# LÓGICA: "E se não é diretório..."
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# REGRA 3: Reescrever para index.php
+# DIRETIVA: RewriteRule
+# ANATOMIA:
+#   ^(.*)$              = Captura TUDO (qualquer coisa)
+#   index.php?rota=$1   = Reescreve para index.php com parâmetro
+#   [QSA,L]             = QueryStringAppend (mantém ?param=valor), Last
+#
+# RESULTADO PRÁTICO:
+#   /usuarios/123?extra=abc
+#   → index.php?rota=/usuarios/123&extra=abc
+#   (query string original preservada)
+RewriteRule ^(.*)$ index.php?rota=$1 [QSA,L]
+
+# ============================================
+# SEÇÃO 9: RESUMO E CHECKLIST
+# ============================================
+#
+# VERIFICAÇÃO ANTES DE USAR EM PRODUÇÃO:
+#
+# [ ] Certificado SSL instalado? (cPanel → SSL/TLS)
+# [ ] mod_rewrite ativo? (cPanel → Apache Modules)
+# [ ] mod_deflate ativo? (cPanel → Apache Modules)
+# [ ] mod_expires ativo? (cPanel → Apache Modules)
+# [ ] mod_headers ativo? (cPanel → Apache Modules)
+# [ ] Arquivo está em /public_html/.htaccess (pasta raiz)
+# [ ] Permissão 644 no arquivo? (cPanel File Manager → Properties)
+# [ ] Testou em staging primeiro? (NÃO direto em produção)
+# [ ] Guardou backup do .htaccess original? (Essencial!)
+#
+# TESTE DE FUNCIONALIDADE:
+#
+# 1. HTTP → HTTPS:
+#    curl -I http://ipaccontabilidade.com.br
+#    Esperado: Status 301 + redirect para HTTPS
+#
+# 2. WWW → SEM WWW:
+#    curl -I https://www.ipaccontabilidade.com.br
+#    Esperado: Status 301 + redirect para sem www
+#
+# 3. Cache funcionando:
+#    curl -I https://ipaccontabilidade.com.br/logo.png
+#    Procure: Cache-Control: max-age=...
+#
+# 4. Compressão funcionando:
+#    curl -I https://ipaccontabilidade.com.br/style.css
+#    Procure: Content-Encoding: gzip
+#
+# 5. Headers de segurança:
+#    curl -I https://ipaccontabilidade.com.br
+#    Procure: X-Content-Type-Options, X-Frame-Options, etc
+#
+# ============================================
+# NOTAS IMPORTANTES
+# ============================================
+#
+# 1. ORDEM IMPORTA
+#    - Regras são processadas sequencialmente
+#    - Uma regra pode reescrever o resultado de outra
+#    - Use [L] para parar quando necessário
+#
+# 2. DEBUGGING
+#    Se algo não funciona:
+#    a) Verifique error_log (cPanel → Error Log)
+#    b) Procure por "RewriteRule", "syntax error"
+#    c) Teste incrementalmente (adicione 1 regra por vez)
+#
+# 3. BACKUP
+#    Sempre guarde cópia do .htaccess original:
+#    cp .htaccess .htaccess.backup
+#
+# 4. CONFLITOS
+#    Se usar framework com próprio .htaccess:
+#    Mescle as regras respeitando ordem
+#
+# ============================================
+# FIM DO ARQUIVO
+# ============================================

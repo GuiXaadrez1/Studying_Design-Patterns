@@ -1,0 +1,240 @@
+# ============================================
+# .htaccess HTTPS - TEMPLATE PRODUÇÃO
+# ============================================
+# 
+# USO: Copie este arquivo para /public_html/.htaccess
+#      Após copiar, leia as instruções abaixo
+#
+# INSTRUÇÕES DE PERSONALIZAÇÃO:
+# 1. Linha 30: Substitua SEU_DOMINIO_AQUI pelo seu domínio
+# 2. Salve o arquivo como .htaccess (sem extensão)
+# 3. Upload via cPanel File Manager ou FTP
+# 4. Defina permissão: 644 (via Properties)
+# 5. Teste seguindo o checklist abaixo
+#
+
+# ============================================
+# SEÇÃO 1: ATIVAÇÃO DE MÓDULOS
+# ============================================
+
+RewriteEngine On
+RewriteBase /
+
+# ============================================
+# SEÇÃO 2: FORÇAR HTTPS (CRÍTICO)
+# ============================================
+# Qualquer acesso HTTP será redirecionado para HTTPS (301)
+
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# ============================================
+# SEÇÃO 3: REMOVER WWW (CANONICAL)
+# ============================================
+# Todos os acessos com www serão redirecionados para sem www
+# Se preferir com www, comente esta seção e descomente a abaixo
+
+# OPÇÃO A: Forçar SEM www (recomendado)
+RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
+RewriteRule ^(.*)$ https://%1/$1 [L,R=301]
+
+# OPÇÃO B: Forçar COM www (descomente se preferir)
+# RewriteCond %{HTTP_HOST} !^www\. [NC]
+# RewriteRule ^(.*)$ https://www.%{HTTP_HOST}/$1 [L,R=301]
+
+# ============================================
+# SEÇÃO 4: SEGURANÇA BÁSICA
+# ============================================
+
+Options -Indexes
+
+<Files "config.php">
+    Deny from all
+</Files>
+
+<Files ".env">
+    Deny from all
+</Files>
+
+<Files ".htaccess">
+    Deny from all
+</Files>
+
+<FilesMatch "^\.ht">
+    Deny from all
+</FilesMatch>
+
+# ============================================
+# SEÇÃO 5: CACHE (PERFORMANCE)
+# ============================================
+
+<IfModule mod_expires.c>
+    ExpiresActive On
+    
+    # Imagens (1 ano)
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/webp "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+    
+    # Fontes (1 ano)
+    ExpiresByType font/truetype "access plus 1 year"
+    ExpiresByType font/opentype "access plus 1 year"
+    ExpiresByType application/x-font-woff "access plus 1 year"
+    ExpiresByType application/vnd.ms-fontobject "access plus 1 year"
+    
+    # CSS (1 mês)
+    ExpiresByType text/css "access plus 1 month"
+    
+    # JavaScript (1 mês)
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType text/javascript "access plus 1 month"
+    
+    # HTML (1 dia)
+    ExpiresByType text/html "access plus 1 day"
+    
+    # JSON/API (1 hora)
+    ExpiresByType application/json "access plus 1 hour"
+    
+    # Padrão (8 horas)
+    ExpiresDefault "access plus 8 hours"
+</IfModule>
+
+# ============================================
+# SEÇÃO 6: COMPRESSÃO GZIP
+# ============================================
+
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/plain
+    AddOutputFilterByType DEFLATE text/xml
+    AddOutputFilterByType DEFLATE application/xml
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE text/javascript
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE application/x-javascript
+    AddOutputFilterByType DEFLATE application/json
+    AddOutputFilterByType DEFLATE image/svg+xml
+    
+    SetEnvIfNoCase Request_URI \
+        \.(?:gif|jpe?g|png|rar|zip|7z|exe|gz|tar)$ \
+        no-gzip dont-vary
+</IfModule>
+
+# ============================================
+# SEÇÃO 7: HEADERS DE SEGURANÇA
+# ============================================
+
+<IfModule mod_headers.c>
+    Header set Cache-Control "public, max-age=31536000"
+    Header append Vary Accept-Encoding
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    Header set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+</IfModule>
+
+# ============================================
+# SEÇÃO 8: REESCRITA PARA FRAMEWORK
+# ============================================
+# Descomente se usar framework (Laravel, Slim, Symfony, etc)
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php?rota=$1 [QSA,L]
+
+# ============================================
+# FIM DO ARQUIVO
+# ============================================
+
+
+# ====================================================================
+# CHECKLIST DE IMPLEMENTAÇÃO
+# ====================================================================
+#
+# ANTES DE USAR:
+#
+# [ ] Certificado SSL instalado em cPanel?
+#     Home → SSL/TLS → Certificate Status = Active
+#
+# [ ] Módulos Apache ativados?
+#     Home → Apache Modules
+#     - mod_rewrite (search "rewrite") = GREEN
+#     - mod_deflate (search "deflate") = GREEN
+#     - mod_expires (search "expires") = GREEN
+#     - mod_headers (search "headers") = GREEN
+#
+# [ ] Domínio personalizado?
+#     Encontre: SEU_DOMINIO_AQUI em linha ~30
+#     Substitua: seu-dominio.com.br
+#     Se não encontrar, use search/replace
+#
+# [ ] Permissão do arquivo?
+#     cPanel → File Manager → .htaccess
+#     Clique Properties → Permissions: 644
+#
+# [ ] Backup realizado?
+#     Se existir .htaccess antigo, renomeie para .htaccess.old
+#
+# TESTES APÓS IMPLEMENTAÇÃO:
+#
+# [ ] HTTP redireciona para HTTPS?
+#     Comando: curl -I http://seu-dominio.com.br
+#     Esperado: HTTP/1.1 301 Moved Permanently
+#               Location: https://seu-dominio.com.br/
+#
+# [ ] WWW redireciona para sem www?
+#     Comando: curl -I https://www.seu-dominio.com.br
+#     Esperado: HTTP/1.1 301 Moved Permanently
+#               Location: https://seu-dominio.com.br/
+#
+# [ ] HTTPS funciona?
+#     Browser: https://seu-dominio.com.br
+#     Procure: 🔒 (cadeado verde na barra)
+#
+# [ ] Cache headers presentes?
+#     Comando: curl -I https://seu-dominio.com.br/logo.png
+#     Esperado: Cache-Control: public, max-age=31536000
+#
+# [ ] Compressão gzip ativa?
+#     Comando: curl -I https://seu-dominio.com.br/style.css
+#     Esperado: Content-Encoding: gzip
+#
+# [ ] Headers de segurança presentes?
+#     Comando: curl -I https://seu-dominio.com.br
+#     Esperado:
+#     X-Content-Type-Options: nosniff
+#     X-Frame-Options: SAMEORIGIN
+#     X-XSS-Protection: 1; mode=block
+#
+# [ ] Site funciona normalmente?
+#     - Login funciona?
+#     - Formulários enviam?
+#     - Imagens carregam?
+#     - APIs respondem?
+#
+# TROUBLESHOOTING:
+#
+# Erro 500?
+#   → cPanel → Error Logs → procure "htaccess"
+#   → Procure "syntax error" ou "invalid regex"
+#   → Compare com template original
+#
+# Redirecionamento infinito?
+#   → Provavelmente %{HTTP_HOST} em loop
+#   → Comente seção 3 (WWW) e teste
+#   → Se funciona, é problema de canonicalização
+#
+# Cache não funciona?
+#   → Verifique mod_expires está ativo
+#   → Teste com novo arquivo (.htaccess caching é por tipo MIME)
+#
+# Compressão não ativa?
+#   → Verifique mod_deflate está ativo
+#   → Teste tipo MIME (CSS, JS, HTML devem comprimir)
+#
+# ====================================================================
+# FIM DO CHECKLIST
+# ====================================================================
