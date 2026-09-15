@@ -7,22 +7,29 @@
 		padrão de projeto Strategy
 
 
-		conceito: é um padrão de projeto de software comportamental que permite definir uma família de algoritmos, encapsular cada um deles em classes separadas e fazer com que seus objetos sejam intercambiáveis em tempo de execução.
+		conceito: é um padrão de projeto de software comportamental que permite definir uma
+		família de algoritmos, encapsular cada um deles em classes separadas e fazer com que
+		seus objetos sejam intercambiáveis em tempo de execução.
 
-		Isso significa que o padrão permite que o algoritmo varie independentemente dos clientes que o utilizam, promovendo a flexibilidade e a manutenção do código.
+		Isso significa que o padrão permite que o algoritmo varie independentemente dos
+		clientes que o utilizam, promovendo a flexibilidade e a manutenção do código.
 	*/
 
 
 	/*
 		Quando Aplicar? 
 
-		uando você tem várias classes que diferem apenas em seu comportamento (variantes de um algoritmo).
+		uando você tem várias classes que diferem apenas em seu comportamento
+		(variantes de um algoritmo).
 
-		Quando você precisa alternar entre diferentes comportamentos de um objeto em tempo de execução.
+		Quando você precisa alternar entre diferentes comportamentos de um objeto em tempo
+		de execução.
 
-		Para evitar grandes blocos de condicionais (if/else ou switch/case) espalhados pelo código para selecionar comportamentos semelhantes.
+		Para evitar grandes blocos de condicionais (if/else ou switch/case) espalhados
+		pelo código para selecionar comportamentos semelhantes.
 
-		Quando a lógica de um algoritmo deve ser isolada do código que a utiliza (separação de responsabilidades).
+		Quando a lógica de um algoritmo deve ser isolada do código que a utiliza 
+		(separação de responsabilidades).
 	
 	*/
 
