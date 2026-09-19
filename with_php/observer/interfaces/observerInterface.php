@@ -21,9 +21,9 @@ interface Observer{
 		quando uma medição metereológica muda.
 	*/
 	public function update(
-		float $temp, # temperatura
-		float $humidity, # temperatura de humidade 
-		float $pressure, #temperatura de pressão
+		?float $temp, # temperatura
+		?float $humidity, # temperatura de humidade 
+		?float $pressure, #temperatura de pressão
 	):null;
 
 }

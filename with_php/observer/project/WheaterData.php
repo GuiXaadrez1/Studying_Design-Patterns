@@ -40,8 +40,8 @@
 // papel de subject e observer...
 
 
-require_once "./with_php/observer/interfaces/subjectInterface.php";
-require_once "./with_php/observer/interfaces/observerInterface.php";
+require_once __DIR__ . '/../interfaces/subjectInterface.php';
+require_once __DIR__ . '/../interfaces/observerInterface.php';
 
 interface DisplayElement{
 
@@ -56,7 +56,7 @@ interface DisplayElement{
     
     */
 
-    public function display():string;
+    public function display():null;
 }
 
 
@@ -67,19 +67,19 @@ class WheaterData implements Subject{
         Essa vai ser a nossa classe concreta que vai implementar a interface Subject
         ou seja vai ser nossa class que instancializa/materializa um objeto Subject
     */
+    
 
-    // colocando atributos privados da classe
-    private Observer $objObserver; # esse atributo vai ser o objeto a registrado na lista abaixo
+# --- DEFININDO ATRIBUTOS INTERNOS DA CLASSE/OBJETO
+    
+    /** @var Observer[] */ 
     private array $observers = []; # esse atributo se inicia vazio 
     private float $temperatura;
     private float $humidity;
     private float $pressure;
 
-    public function __construct(Observer $observer)
-    {
-        $this->objObserver = $observer;
+    public function __construct(){
+        throw new \Exception('Not implemented');
     }
-
 
     /*
        #[Override] é um attribute nativo do PHP 8.3 que declara explicitamente que um 
@@ -93,15 +93,138 @@ class WheaterData implements Subject{
         Se corresponder, tudo funciona normalmente — o attribute não altera o comportamento
     */
     #[Override]
-    public function registerObserver(Observer $objObserver):null
-    {   
+    public function registerObserver(Observer $objObserver):null{   
         # registrando o observer na ultima posição do array
-        $this->observers[] = $this->objObserver;
+        $this->observers[] = $objObserver;
+
+        return null;
+    }
+
+    #[Override]
+    public function removeObserver(Observer $objObserver):null{   
+
+        // Remove o Observador registrado!
+
+        if (in_array($objObserver, $this->observers)) {
+            
+            $key = array_search($objObserver, $this->observers);
+            
+            unset($this->observers[$key]);
+            
+            $this->observers = array_values($this->observers); // reindexa o array
+        };
+
+        return null;
+    }
+
+
+    #[Override]
+    public function notifyObservers():null{  
+
+        // Notifica todos os observadores que o estado do sujeito mudou
+
+        for($i = 0;$i < count($this->observers); ++$i){
+
+            $observer = $this->observers[$i];
+            
+            $observer->update(
+                $this->temperatura,
+                $this->humidity,
+                $this->pressure
+            );
+        }
+
+        return null;
+    }
+
+
+    public function measurementsChanged():null{
+
+        # chama função de notificação
+
+        $this->notifyObservers();
+        
+        return null;
+    }
+
+
+    public function setMeasurementsChanged(
+        
+        float $temperatura,
+        float $humidity,
+        float $pressure
+
+    ):null{
+
+        # Atualiza os parâemtros e avisa para todos os observer
+        # o estado do sujeito foi alterado!
+
+        $this->temperatura = $temperatura;
+        $this->humidity = $humidity;
+        $this->pressure = $pressure;
+
+        $this->measurementsChanged();
+
+        return null;
+    }
+
+    // ---- outhers methods ----- 
+
+}
+
+
+# --- AGORA VAMOS DEFINIR NOSSA CLASSE DE EXIBIÇÃO
+
+    # Podemos implementar diversas interfaces a uma classe no php
+class CurrentConditionsDisplay implements Observer,DisplayElement{
+
+    /*
+        Essa classe implementa Observer para que possa receber
+        as mudanças do objeto wheaterData que é o sujeito.
+        Basicamente le é um observador
+
+        Ela também implementa o DisplayElement porque nossa API
+        vai exigir que todos os elementos de exibição implementem
+        essa interface.
+    
+    */
+
+    private float $temperatura;
+    private float $humidity;
+    private Subject $weatherData;
+
+    # Injeção de Depedência por composição
+    public function __construct(Subject $weatherData){
+        
+        $this->weatherData = $weatherData;
+
+        # Agora vamos registrar a referência desta classe ao objeto Sujeito
+        $this->weatherData->registerObserver($this);
+
+    }
+
+    #[Override]
+    public function display(): null
+    {
+        /*
+            Imprime apenas a temperatura atual
+        */
+        echo "Current conditions: " . (string) $this->temperatura . "<br>" . "degrees and " . (string) $this->humidity;
+        
+        return null;
+    }
+
+    #[Override]
+    public function update(?float $temp, ?float $humidity, ?float $pressure): null
+    {
+        $this->temperatura = $temp;
+        $this->humidity = $temp;
+
+        $this->display();
 
         return null;
     }
 
 }
 
-
-?>
+?>   
