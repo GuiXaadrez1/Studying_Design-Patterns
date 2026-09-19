@@ -1,4 +1,4 @@
-<?
+<?php
 
 /*
 
@@ -14,7 +14,7 @@
 */
 
 // importando a interface Observer para fazer de Type Hinting
-require_once "./with_php/observer/interfaces/observerInterface.php";
+require_once __DIR__ . '/../interfaces/observerInterface.php';
 
 interface Subject{
 	

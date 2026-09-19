@@ -3,7 +3,7 @@
 // vamos importar a classe subject e observers que criamos de teste e implementar aqui
 // require_once "./with_php/observer/project/WheaterData.php";
 
-require_once __DIR__. "/WheaterData.php";
+require_once __DIR__ . '/WheaterData.php';
 
 class WheaterStation{
 
@@ -30,8 +30,11 @@ function main(){
 
     $station->wheaterData->setMeasurementsChanged(25.0,60.0,0.0);
 
-    $station->currentConditionsDisplay->display();
+    # $station->currentConditionsDisplay->display();
 
 };
+
+
+main();
 
 ?>

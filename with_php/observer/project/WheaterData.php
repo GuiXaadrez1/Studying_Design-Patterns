@@ -39,9 +39,8 @@
 // vamos importar nossas interfaces para implementar nas classes que vão fazer 
 // papel de subject e observer...
 
-
-require_once __DIR__ . '/../interfaces/subjectInterface.php';
-require_once __DIR__ . '/../interfaces/observerInterface.php';
+require_once __DIR__ . '/../interfaces/subjectInterface.php';      
+require_once __DIR__ . '/../interfaces/observerInterface.php';   
 
 interface DisplayElement{
 
@@ -60,7 +59,6 @@ interface DisplayElement{
 }
 
 
-
 class WheaterData implements Subject{
     
     /*
@@ -77,8 +75,14 @@ class WheaterData implements Subject{
     private float $humidity;
     private float $pressure;
 
-    public function __construct(){
-        throw new \Exception('Not implemented');
+    public function __construct(
+        float $temperatura = 0.0,
+        float $humidity = 0.0,
+        float $pressure = 0.0
+    ){
+        $this->temperatura = $temperatura;
+        $this->humidity = $humidity;
+        $this->pressure = $pressure;
     }
 
     /*
@@ -218,7 +222,7 @@ class CurrentConditionsDisplay implements Observer,DisplayElement{
     public function update(?float $temp, ?float $humidity, ?float $pressure): null
     {
         $this->temperatura = $temp;
-        $this->humidity = $temp;
+        $this->humidity = $humidity;
 
         $this->display();
 
