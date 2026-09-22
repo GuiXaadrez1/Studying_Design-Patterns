@@ -24,7 +24,7 @@
 	Conceito de Strategy: 
 
 		- Define uma família de algoritmos que 
-		encapsula cada um dels e os torna
+		encapsula cada um deles e os torna
 		intercambiáveis  ou seja:
 			 
 			- (
