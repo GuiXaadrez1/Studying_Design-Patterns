@@ -19,7 +19,7 @@
 	/*
 		Quando Aplicar? 
 
-		uando você tem várias classes que diferem apenas em seu comportamento
+		quando você tem várias classes que diferem apenas em seu comportamento
 		(variantes de um algoritmo).
 
 		Quando você precisa alternar entre diferentes comportamentos de um objeto em tempo

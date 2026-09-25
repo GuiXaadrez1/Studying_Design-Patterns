@@ -10,7 +10,12 @@
             - Uma classe abstrata não pode ser instanciada diretamente.
 
             - Uma classe que possui pelo menos um método abstrato precisa ser declarada como abstrata.    
-    
+
+        Essa classe vai ser o SuperTipo em comum de todas as bebidas criadas
+            
+            - SuperTipo -> Na orientação a objetos e sistemas de tipos, um supertipo é 
+            uma classe ou interface genérica da qual outras classes (subtipos) 
+            herdam características.
     */
 
     // classe abstrata que possui dois methods
